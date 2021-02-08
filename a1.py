@@ -16,12 +16,13 @@ def get_ytms(bond_table, dates):
             ytm_data.iloc[j, i] = ytm
     return ytm_data
 
+
 def calculate_bond_ytm(price, par, payments, coup, freq=2, guess=0.05):
-    # payments: The number of coupon payments remaining
     coupon = coup * par / float(freq)
     dt = [(i + 1) / freq for i in range(int(payments * freq))]
     ytm_func = lambda y: sum([coupon/((1 + y/freq)**(freq * t)) for t in dt]) + par/(1 + y/freq) ** (freq * payments) - price        
     return optimize.newton(ytm_func, guess) * 100
+
 
 def get_spot_rates(bond_table, dates):
     # return a spot rate dataframe
@@ -38,10 +39,12 @@ def get_spot_rates(bond_table, dates):
                 spot_data[dates[i]][j] = abs(spot_r)
     return spot_data
 
+
 def get_zero_coupon_rate(price, curr_date, maturity_date):
     time_to_maturity = (pd.to_datetime(maturity_date) - pd.to_datetime(curr_date)).days / 365
     rate = -np.log(price / par) / time_to_maturity
     return rate * 100
+
 
 def get_spot_rate(bond_table, spot_data, date_index, bond_index, dates):
     curr_date = dates[date_index] 
@@ -65,17 +68,19 @@ def get_spot_rate(bond_table, spot_data, date_index, bond_index, dates):
     r_t2 = np.log(c_t2 / (dirty_price - (c_t1 / r_t1))) / t2    
     return r_t2 * 100
 
+
 def get_forward_rates(spot_data, dates):
     # return a forward rate dataframe
-    forward_matrix = pd.DataFrame(columns=dates, index=["1yr-1yr","1yr-2yr", "1yr-3yr", "1yr-4yr"]) 
+    forward_data = pd.DataFrame(columns=dates, index=["1yr-1yr","1yr-2yr", "1yr-3yr", "1yr-4yr"]) 
     for i in range(len(dates)):
         base_spot_rate = spot_data.iloc[0, i] / 100
         for j in range(0, 4):
             numerator = (1 + spot_data.iloc[(j + 1) * 2, i] / 100) ** (j + 2)
             denominator = (1 + base_spot_rate) 
             forward = (numerator / denominator) ** (1 / (j + 1)) - 1
-            forward_matrix.iloc[j, i] = forward
-    return forward_matrix
+            forward_data.iloc[j, i] = forward
+    return forward_data
+
 
 def plot_ytm(bonds, ytm_data, dates):     
     plt.figure(figsize=(12, 6), dpi= 100)
@@ -90,6 +95,7 @@ def plot_ytm(bonds, ytm_data, dates):
     plt.grid(True, axis = 'both')
     plt.show()
     
+    
 def plot_spot(bonds, spot_data, dates):       
     plt.figure(figsize=(12, 6), dpi= 100)
     fig = plt.subplot(1, 1, 1)
@@ -102,6 +108,7 @@ def plot_spot(bonds, spot_data, dates):
     fig.legend(spot_data.columns, loc='upper left', ncol=2)
     plt.grid(True, axis = 'both')
     plt.show()
+
 
 def plot_forward(bonds, forward_data, dates):
     #plot of forward rate       
@@ -116,32 +123,34 @@ def plot_forward(bonds, forward_data, dates):
     plt.grid(True, axis = 'both')
     plt.show()
 
+
 def yield_cov(ytm_data):   
-    cov_mat = np.zeros([9, 5])
+    matrix = np.zeros([9, 5])
     for i in range(0, 5):
         for j in range(1, 10):
             X_ij = np.log((ytm_data.iloc[i * 2, j]) / (ytm_data.iloc[i * 2, j - 1]))
-            cov_mat[j - 1, i] = X_ij
-    ytm_cov = np.cov(cov_mat.T)
-    eig_val, eig_vec = np.linalg.eig(ytm_cov)
+            matrix[j - 1, i] = X_ij
+    ytm_cov = np.cov(matrix.T)
+    eigenvalue, eigenvector = np.linalg.eig(ytm_cov)
     print(ytm_cov)
-    print((eig_val, eig_vec))
-    print(eig_val[0] / sum(eig_val) * 100)
+    print((eigenvalue, eigenvector))
+    print(eigenvalue[0] / sum(eigenvalue) * 100)
+
 
 def forward_cov(forward_data):
-    cov_mat = np.zeros([9, 4])
+    matrix = np.zeros([9, 4])
     for i in range(0, 4):
         for j in range(1, 10):
             X_ij = np.log((forward_data.iloc[i, j]) / (forward_data.iloc[i, j - 1]))
-            cov_mat[j - 1, i] = X_ij
-    forward_cov = np.cov(cov_mat.T)
-    eig_val, eig_vec = np.linalg.eig(forward_cov)
+            matrix[j - 1, i] = X_ij
+    forward_cov = np.cov(matrix.T)
+    eigenvalue, eigenvector = np.linalg.eig(forward_cov)
     print(forward_cov)
-    print((eig_val, eig_vec))
-    print(eig_val[0] / sum(eig_val) * 100)
+    print((eigenvalue, eigenvector))
+    print(eigenvalue[0] / sum(eigenvalue) * 100)
+
 
 par = 100
-
 if __name__ == '__main__':
     bond_table = pd.read_excel('data.xlsx') 
     dates = list(bond_table.columns.values)[5:]
